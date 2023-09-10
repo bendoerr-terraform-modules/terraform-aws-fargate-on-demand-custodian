@@ -81,7 +81,7 @@ function sigterm() {
   task-reaper
 
   io::info "Emitting stop event..."
-  event-emitter --type 'start' --topic "${SIGTERM_SNS_TOPIC}"
+  event-emitter --type 'stop' --topic "${SIGTERM_SNS_TOPIC}"
 
   io::info "... done"
   exit 0
@@ -127,6 +127,5 @@ function main() {
   task-reaper
 
   io::info "Emitting stop event..."
-  event-emitter --type 'start' --topic "${SIGTERM_SNS_TOPIC}"
-
+  event-emitter --type 'stop' "${args[@]}"
 }
