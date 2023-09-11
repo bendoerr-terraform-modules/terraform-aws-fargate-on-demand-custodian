@@ -29,7 +29,7 @@ fi
 declare -r SCRIPT_NAME="$(basename "$0")"
 
 # Global SNS_TOPIC so that an event can be sent on sigterm
-declare SIGTERM_SNS_TOPIC="${SNS_TOPIC_ARN:-}"
+declare SNS_TOPIC="${SNS_TOPIC_ARN:-}"
 
 ################################################################################
 # Helpers
@@ -88,8 +88,10 @@ function sigterm() {
   io::info "Stopping task..."
   task-reaper
 
-  io::info "Emitting stop event..."
-  event-emitter --type 'stop' --topic "${SIGTERM_SNS_TOPIC}"
+  if [[ -z "${SNS_TOPIC}" ]]; then
+    io::info "Emitting stop event..."
+    event-emitter --type 'stop' --topic "${SNS_TOPIC}"
+  fi
 
   io::info "... done"
   exit 0
@@ -117,14 +119,16 @@ function main() {
       if [[ $# -lt 1 ]]; then
         io::die_missing_value "${key}"
       fi
-      SIGTERM_SNS_TOPIC="${1}"
+      SNS_TOPIC="${1}"
       shift
       ;;
     esac
   done
 
-  io::info "Emitting start event..."
-  event-emitter --type 'start' "${args[@]}"
+  if [[ -z "${SNS_TOPIC}" ]]; then
+    io::info "Emitting start event..."
+    event-emitter --type 'start' "${args[@]}"
+  fi
 
   io::info "Updating DNS record..."
   dns-updater "${args[@]}"
@@ -134,6 +138,10 @@ function main() {
   io::info "Stopping task..."
   task-reaper
 
-  io::info "Emitting stop event..."
-  event-emitter --type 'stop' "${args[@]}"
+  if [[ -z "${SNS_TOPIC}" ]]; then
+    io::info "Emitting stop event..."
+    event-emitter --type 'stop' "${args[@]}"
+  fi
+
+  io::info "... done"
 }
