@@ -11,7 +11,7 @@ set -o pipefail
 
 # Going to use pattern matching with multiple patterns to validate event type
 # https://www.gnu.org/software/bash/manual/bash.html#Pattern-Matching
-set -o extglob
+shopt -s extglob
 
 ################################################################################
 # DEBUG
@@ -39,6 +39,10 @@ function io::print_help() {
   printf '\n%s\n' "Ben's Terraform AWS Fargate on Demand Custodian"
   printf 'Usage: %s [-h|--help] [options]\n' "$(basename "$0")"
   printf '\t%s\n' "-h, --help: Prints help"
+  printf '\t%s\n' ""
+  printf '\n%s\n' "Watch Options"
+  printf '\t%s\n' "--watch-tcp     (WATCH_TCP)     TCP Port to watch using a iptables rule"
+  printf '\t%s\n' "--watch-idle    (WATCH_IDLE)    Number of seconds to remain idle"
   printf '\t%s\n' ""
   printf '\n%s\n' "Required Options"
   printf '\t%s\n' "--dns-zone-id   (DNS_ZONE_ID)   Route 53 Zone ID containing the record to update"
@@ -106,6 +110,9 @@ function main() {
   local -a args
   IFS=" " read -r -a args <<< "$@"
 
+  local tcp_port=""
+  local idle_timeout="600"
+
   while test $# -gt 0; do
     key="${1}"
     shift
@@ -122,6 +129,20 @@ function main() {
       SNS_TOPIC="${1}"
       shift
       ;;
+    --watch-tcp)
+      if [[ $# -lt 1 ]]; then
+        io::die_missing_value "${key}"
+      fi
+      tcp_port="${1}"
+      shift
+      ;;
+    --watch-idle)
+      if [[ $# -lt 1 ]]; then
+        io::die_missing_value "${key}"
+      fi
+      idle_timeout="${1}"
+      shift
+      ;;
     esac
   done
 
@@ -133,7 +154,10 @@ function main() {
   io::info "Updating DNS record..."
   dns-updater "${args[@]}"
 
-  ## TODO WATCH
+  if [[ -z "${tcp_port}" ]]; then
+  io::info "Starting TCP Port Watcher..."
+    watcher-tcp "${tcp_port}" "${idle_timeout}"
+  fi
 
   io::info "Stopping task..."
   task-reaper
@@ -145,3 +169,10 @@ function main() {
 
   io::info "... done"
 }
+
+
+################################################################################
+# Entry Point
+################################################################################
+
+main "$@"
