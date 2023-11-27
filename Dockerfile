@@ -5,6 +5,7 @@ COPY ./watcher-tcp.go .
 RUN CGO_ENABLED=0 GOOS=linux go build watcher-tcp.go
 
 FROM amazon/aws-cli
+LABEL org.opencontainers.image.source = "https://github.com/bendoerr-terraform-modules/terraform-aws-fargate-on-demand-custodian"
 
 RUN yum install -y \
     jq \
