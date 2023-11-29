@@ -1,13 +1,13 @@
-name: ci
+name: Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     tags:
       - "v*.*.*"
   pull_request:
-    branches: [ main ]
-    types: [ opened, synchronize, reopened ]
+    branches: [main]
+    types: [opened, synchronize, reopened]
 
 jobs:
   docker:
@@ -53,6 +53,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
+          provenance: false
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
         env:
