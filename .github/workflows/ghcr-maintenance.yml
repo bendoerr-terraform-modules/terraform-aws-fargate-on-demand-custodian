@@ -1,4 +1,4 @@
-name: ci
+name: Cleanup ghcr.io
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   purge-image:
-    name: Delete image from ghcr.io
+    name: Delete images from ghcr.io
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -31,4 +31,16 @@ jobs:
           owner: bendoerr-terraform-modules
           name: terraform-aws-fargate-on-demand-custodian
           token: ${{ github.token }}
-          untagged-keep-latest: 0
+          untagged-keep-latest: 10
+      - name: Delete old sha-ref Images
+        #        uses: snok/container-retention-policy@v2
+        uses: injabie3-moe/container-retention-policy@use-github-token
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          account-type: org
+          org-name: bendoerr-terraform-modules
+          image-names: terraform-aws-fargate-on-demand-custodian
+          token: ${{ github.token }}
+          token-type: github-token
+          filter-tags: sha-*
+          cut-off: 1 minute ago UTC

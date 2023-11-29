@@ -2,21 +2,41 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"flag"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 )
 
-func monitorUnconn(port string) (<-chan interface{}, error) {
+var (
+	port             string
+	timeout          int64
+	eventsEnabled    bool
+	eventsTopic      string
+	eventActive      string
+	eventInactive    string
+	eventEmitTimeout int64
+)
+
+func init() {
+	flag.StringVar(&port, "port", "443", "The TCP port to watch")
+	flag.Int64Var(&timeout, "timeout", 300, "The timeout when watching")
+	flag.BoolVar(&eventsEnabled, "events", true, "Should events be emitted or not")
+	flag.StringVar(&eventsTopic, "events-topic", "", "ARN of the SNS Topic")
+	flag.StringVar(&eventActive, "event-type-active", "active", "The event type to emit when 'active'")
+	flag.StringVar(&eventInactive, "event-type-inactive", "inactive", "The event type to emit when 'inactive'")
+	flag.Int64Var(&eventEmitTimeout, "event-emit-timeout", 10, "Timeout in seconds when emitting an event")
+}
+
+func monitorUnconn() (<-chan interface{}, error) {
 	notify := make(chan interface{})
 
 	// ss needs a fake tty so wrap it in script
-	cmd := exec.Command("script", "--quiet", "--flush", "--command",
-		fmt.Sprintf("/usr/sbin/ss --no-header --numeric --oneline --events sport = %s", port))
+	cmd := exec.Command("script", "--quiet", "--flush", "--return", "--command",
+		fmt.Sprintf("ss --no-header --numeric --oneline --events sport = %s", port))
 
 	// Redirect stderr to stdout
 	cmd.Stderr = cmd.Stdout
@@ -39,24 +59,25 @@ func monitorUnconn(port string) (<-chan interface{}, error) {
 	// Go and watch the output
 	go func() {
 		for scanner.Scan() {
+			log.Printf("DEBUG monitorUnconn: text: %s\n", scanner.Text())
 			notify <- struct{}{}
 		}
 
 		err = cmd.Wait()
 		if err != nil {
-			log.Fatal(fmt.Errorf("monitorUnconn: Wait(): %w", err))
+			log.Fatalf("FATAL monitorUnconn: Wait(): %s\n", err)
 		}
 
-		log.Println("monitorUnconn: done")
+		log.Println("WARN monitorUnconn: done")
 	}()
 
 	return notify, nil
 }
 
-func countEstab(port string) (int, error) {
+func countEstab() (int, error) {
 	// ss needs a fake tty so wrap it in script
-	cmd := exec.Command("script", "--quiet", "--flush", "--command",
-		fmt.Sprintf("/usr/sbin/ss --no-header --numeric --oneline sport = %s", port))
+	cmd := exec.Command("script", "--quiet", "--flush", "--return", "--command",
+		fmt.Sprintf("/sbin/ss --no-header --numeric --oneline sport = %s", port))
 
 	// Run the command
 	output, err := cmd.CombinedOutput()
@@ -64,48 +85,105 @@ func countEstab(port string) (int, error) {
 		return -1, fmt.Errorf("countEstab: CombinedOutput(): %w", err)
 	}
 
-	return strings.Count(string(output), "\n"), nil
+	count := strings.Count(string(output), "\n")
+	if count > 0 {
+		for _, l := range strings.Split(string(output), "\n") {
+			log.Printf("DEBUG countEstab: text: %s\n", l)
+		}
+	}
+
+	return count, nil
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("missing tcp port")
+func emitEvent(eventType string) {
+	if !eventsEnabled {
+		return
 	}
 
-	if len(os.Args) < 3 {
-		log.Fatal("missing timeout in seconds")
-	}
+	ctx, cancel := context.WithTimeout(context.TODO(),
+		time.Duration(eventEmitTimeout)*time.Second)
+	defer cancel()
 
-	port := os.Args[1]
-	timeoutSeconds, err := strconv.ParseInt(os.Args[2], 10, 64)
+	command := exec.CommandContext(ctx, "./event-emitter",
+		"--type", eventType, "--topic", eventsTopic)
+	command.Stderr = command.Stdout
+
+	stdout, err := command.StdoutPipe()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("ERROR emitEvent: StdoutPipe(): %s\n", err)
+
+		return
 	}
 
-	unconn, err := monitorUnconn(port)
+	err = command.Start()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("ERROR emitEvent: Start(): %s\n", err)
+
+		return
 	}
 
-	log.Println("watching")
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		// Propagate the 'event-emitter' output without decoration
+		fmt.Println(scanner.Text())
+	}
 
+	err = command.Wait()
+	if err != nil {
+		log.Printf("ERROR emitEvent: Wait(): %s\n", err)
+
+		return
+	}
+}
+
+func monitor() {
+	// Start monitoring disconnects
+	unconn, err := monitorUnconn()
+	if err != nil {
+		log.Fatalf("ERROR main: monitorUnconn(): %s\n", err)
+	}
+
+	// Start the main loop
+	active := false
 	waiting := true
+
+	log.Println("INFO main: watching")
+
 	for waiting {
-		timer := time.NewTimer(time.Duration(timeoutSeconds) * time.Second)
+		timer := time.NewTimer(time.Duration(timeout) * time.Second)
 
 		select {
 		case <-timer.C:
-			log.Println("event: timeout")
-			estab, err := countEstab(port)
+			log.Printf("INFO main: timeout, active=%t\n", active)
+
+			count, err := countEstab()
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("ERROR main: countEstab(): %s\n", err)
 			}
 
-			log.Println("found established connections: " + strconv.Itoa(estab))
-			waiting = estab > 0
+			log.Printf("INFO main: established connections=%d\n", count)
+
+			if count < 1 {
+				if active {
+					emitEvent("inactive")
+				} else {
+					waiting = false
+				}
+
+				active = false
+			}
+
 		case <-unconn:
-			log.Println("event: unconn")
+			log.Printf("INFO main: unconn, active=%t\n", active)
+
+			if !active {
+				emitEvent("active")
+			}
+
+			active = true
 		}
+
+		log.Printf("INFO main: active=%t, waiting=%t\n", active, waiting)
 
 		// Stop the timer
 		timer.Stop()
@@ -117,5 +195,14 @@ func main() {
 		}
 	}
 
-	log.Println("done watching")
+	log.Println("WARN main: done watching")
+}
+
+func main() {
+	log.SetPrefix("[watcher-tcp] ")
+	log.SetFlags(0)
+
+	flag.Parse()
+
+	monitor()
 }

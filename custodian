@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#
+# https://github.com/bendoerr-terraform-modules/terraform-aws-fargate-on-demand/issues/new
 
 ################################################################################
 # Sanity
@@ -9,16 +9,12 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# Going to use pattern matching with multiple patterns to validate event type
-# https://www.gnu.org/software/bash/manual/bash.html#Pattern-Matching
-shopt -s extglob
-
 ################################################################################
 # DEBUG
 ################################################################################
 
 if [[ "${SCRIPT_DBG:-0}" == "1" ]]; then
-  set +x
+  set -x
 fi
 
 ################################################################################
@@ -28,15 +24,18 @@ fi
 # shellcheck disable=SC2155
 declare -r SCRIPT_NAME="$(basename "$0")"
 
-# Global SNS_TOPIC so that an event can be sent on sigterm
-declare SNS_TOPIC="${SNS_TOPIC_ARN:-}"
+declare WATCH_TCP="${WATCH_TCP:-}"
+declare WATCH_IDLE="${WATCH_IDLE:-}"
+declare DNS_ZONE_ID="${DNS_ZONE_ID:-}"
+declare DNS_RECORD="${DNS_RECORD:-}"
+declare SNS_TOPIC_ARN="${SNS_TOPIC_ARN:-}"
 
 ################################################################################
 # Helpers
 ################################################################################
 
 function io::print_help() {
-  printf '\n%s\n' "Ben's Terraform AWS Fargate on Demand Custodian"
+  printf '%s\n' "Ben's Terraform AWS Fargate on Demand Custodian"
   printf 'Usage: %s [-h|--help] [options]\n' "$(basename "$0")"
   printf '\t%s\n' "-h, --help: Prints help"
   printf '\t%s\n' ""
@@ -49,18 +48,12 @@ function io::print_help() {
   printf '\t%s\n' "--dns-record    (DNS_RECORD)    Route 53 record to update"
   printf '\t%s\n' ""
   printf '\n%s\n' "Options"
-  printf '\t%s\n' "--revert-value  (REVERT_VALUE)  Route 53 record value to set"
-  printf '\t%s\n' "--revert-type   (REVERT_TYPE)   Route 53 record type"
-  printf '\t%s\n' "--topic         (SNS_TOPIC_ARN) SNS Topic to send events"
+  printf '\t%s\n' "--topic         (SNS_TOPIC_ARN) SNS Topic to send events, if not provided no events will be emitted"
   printf '\t%s\n' ""
 }
 
 function io::info() {
-  xopts=("--tag" "${SCRIPT_NAME}" "--id=$$")
-  if [[ -t 0 ]]; then
-    xopts+=("--stderr")
-  fi
-  logger "${xopts[@]}" "INFO  $*"
+  echo "[${SCRIPT_NAME}] INFO $*"
 }
 
 function io::die() {
@@ -72,12 +65,12 @@ function io::die() {
     io::print_help >&2
   fi
 
-  logger --tag "${SCRIPT_NAME}" --id="$$" --stderr "ERROR ${msg}"
+  echo "[${SCRIPT_NAME}] ERROR ${msg}" >&2
 
   exit "${ret}"
 }
 
-function io:die_missing_value() {
+function io::die_missing_value() {
   local key="${1}"
   io::die "missing value for argument '${key}'"
 }
@@ -90,11 +83,11 @@ function sigterm() {
   io::info "Terminating..."
 
   io::info "Stopping task..."
-  task-reaper
+  ./task-reaper
 
-  if [[ -z "${SNS_TOPIC}" ]]; then
+  if [[ -n "${SNS_TOPIC_ARN}" ]]; then
     io::info "Emitting stop event..."
-    event-emitter --type 'stop' --topic "${SNS_TOPIC}"
+    ./event-emitter --type 'stop' --topic "${SNS_TOPIC_ARN}"
   fi
 
   io::info "... done"
@@ -107,11 +100,6 @@ trap sigterm SIGTERM
 ################################################################################
 
 function main() {
-  local -a args
-  IFS=" " read -r -a args <<< "$@"
-
-  local tcp_port=""
-  local idle_timeout="600"
 
   while test $# -gt 0; do
     key="${1}"
@@ -122,54 +110,73 @@ function main() {
       io::print_help
       exit 0
       ;;
-    --topic)
-      if [[ $# -lt 1 ]]; then
-        io::die_missing_value "${key}"
-      fi
-      SNS_TOPIC="${1}"
-      shift
-      ;;
     --watch-tcp)
       if [[ $# -lt 1 ]]; then
         io::die_missing_value "${key}"
       fi
-      tcp_port="${1}"
+      WATCH_TCP="${1}"
       shift
       ;;
     --watch-idle)
       if [[ $# -lt 1 ]]; then
         io::die_missing_value "${key}"
       fi
-      idle_timeout="${1}"
+      WATCH_IDLE="${1}"
       shift
+      ;;
+    --dns-zone-id)
+      if [[ $# -lt 1 ]]; then
+        io::die_missing_value "${key}"
+      fi
+      DNS_ZONE_ID="${1}"
+      shift
+      ;;
+    --dns-record)
+      if [[ $# -lt 1 ]]; then
+        io::die_missing_value "${key}"
+      fi
+      DNS_RECORD="${1}"
+      shift
+      ;;
+    --SNS_TOPIC_ARN)
+      if [[ $# -lt 1 ]]; then
+        io::die_missing_value "${key}"
+      fi
+      SNS_TOPIC_ARN="${1}"
+      shift
+      ;;
+    *)
+      io::info "unsupported option: ${key}"
       ;;
     esac
   done
 
-  if [[ -z "${SNS_TOPIC}" ]]; then
+  if [[ -n "${SNS_TOPIC_ARN}" ]]; then
     io::info "Emitting start event..."
-    event-emitter --type 'start' "${args[@]}"
+    ./event-emitter --type 'start' --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
   fi
 
   io::info "Updating DNS record..."
-  dns-updater "${args[@]}"
+  ./dns-updater --dns-zone-id "${DNS_ZONE_ID}" --dns-record "${DNS_RECORD}"
 
-  if [[ -z "${tcp_port}" ]]; then
-  io::info "Starting TCP Port Watcher..."
-    watcher-tcp "${tcp_port}" "${idle_timeout}"
+  if [[ -n "${WATCH_TCP}" ]]; then
+    io::info "Starting TCP Port Watcher..."
+    ./watcher-tcp "${WATCH_TCP}" "${WATCH_IDLE}" ./event-emitter --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
+  else
+    # TODO
+    sleep 3600
   fi
 
   io::info "Stopping task..."
-  task-reaper
+  ./task-reaper
 
-  if [[ -z "${SNS_TOPIC}" ]]; then
+  if [[ -n "${SNS_TOPIC}" ]]; then
     io::info "Emitting stop event..."
-    event-emitter --type 'stop' "${args[@]}"
+    ./event-emitter --type 'stop' --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
   fi
 
   io::info "... done"
 }
-
 
 ################################################################################
 # Entry Point
