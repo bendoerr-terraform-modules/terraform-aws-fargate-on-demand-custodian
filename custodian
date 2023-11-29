@@ -29,6 +29,8 @@ declare DNS_ZONE_ID="${DNS_ZONE_ID:-}"
 declare DNS_RECORD="${DNS_RECORD:-}"
 declare SNS_TOPIC_ARN="${SNS_TOPIC_ARN:-}"
 
+declare FINISHED=false
+
 ################################################################################
 # Helpers
 ################################################################################
@@ -79,18 +81,23 @@ function io::die_missing_value() {
 ################################################################################
 
 function sigterm() {
+  rv=$?
+
   io::info "Terminating..."
 
-  io::info "Stopping task..."
-  ./task-reaper
+  if [[ "${FINISHED}" = false ]]; then
+    io::info "Stopping task..."
+    ./task-reaper
 
-  if [[ -n "${SNS_TOPIC_ARN}" ]]; then
-    io::info "Emitting stop event..."
-    ./event-emitter --type 'stop' --topic "${SNS_TOPIC_ARN}"
+    if [[ -n "${SNS_TOPIC_ARN}" ]]; then
+      io::info "Emitting stop event..."
+      ./event-emitter --type 'stop' --topic "${SNS_TOPIC_ARN}"
+    fi
   fi
 
   io::info "... done"
-  exit 0
+
+  exit "${rv}"
 }
 trap sigterm SIGTERM
 
@@ -99,7 +106,6 @@ trap sigterm SIGTERM
 ################################################################################
 
 function main() {
-
   while test $# -gt 0; do
     key="${1}"
     shift
@@ -170,6 +176,9 @@ function main() {
     io::info "Emitting stop event..."
     ./event-emitter --type 'stop' --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
   fi
+
+  # Prevent double "stop" in trap function
+  FINISHED=true
 
   io::info "... done"
 }
