@@ -11,7 +11,6 @@ on:
 
 jobs:
   docker:
-    name: Build Custodian Docker Container
     runs-on: ubuntu-latest
     permissions:
       packages: write
