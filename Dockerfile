@@ -8,6 +8,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build watcher-tcp.go
 
 FROM bash:5.2-alpine3.18
 LABEL org.opencontainers.image.source="https://github.com/bendoerr-terraform-modules/terraform-aws-fargate-on-demand-custodian"
+LABEL org.opencontainers.image.description="Ben's Terraform AWS Fargate on Demand Module Custodian Sidecar"
+LABEL org.opencontainers.image.authors="https://github.com/bendoerr"
+LABEL org.opencontainers.image.licenses=MIT
 
 WORKDIR /
 
