@@ -15,8 +15,8 @@ func monitorUnconn(port string) (<-chan interface{}, error) {
 	notify := make(chan interface{})
 
 	// ss needs a fake tty so wrap it in script
-	cmd := exec.Command("script", "--quiet", "--flush", "--command",
-		fmt.Sprintf("/usr/sbin/ss --no-header --numeric --oneline --events sport = %s", port))
+	cmd := exec.Command("script", "--quiet", "--flush", "--return", "--command",
+		fmt.Sprintf("ss --no-header --numeric --oneline --events sport = %s", port))
 
 	// Redirect stderr to stdout
 	cmd.Stderr = cmd.Stdout
@@ -55,8 +55,8 @@ func monitorUnconn(port string) (<-chan interface{}, error) {
 
 func countEstab(port string) (int, error) {
 	// ss needs a fake tty so wrap it in script
-	cmd := exec.Command("script", "--quiet", "--flush", "--command",
-		fmt.Sprintf("/usr/sbin/ss --no-header --numeric --oneline sport = %s", port))
+	cmd := exec.Command("script", "--quiet", "--flush", "--return", "--command",
+		fmt.Sprintf("/sbin/ss --no-header --numeric --oneline sport = %s", port))
 
 	// Run the command
 	output, err := cmd.CombinedOutput()
