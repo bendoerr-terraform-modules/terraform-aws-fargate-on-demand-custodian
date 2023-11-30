@@ -49,7 +49,6 @@ inactive.
 Use via
 [Ben's Terraform AWS Fargate on Demand Module](https://github.com/bendoerr-terraform-modules/terraform-aws-fargate-on-demand).
 
-
 ## Roadmap
 
 See the
