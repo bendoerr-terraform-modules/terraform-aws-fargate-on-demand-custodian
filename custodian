@@ -158,7 +158,7 @@ function main() {
 
   if [[ -n "${SNS_TOPIC_ARN}" ]]; then
     io::info "Emitting start event..."
-    ./event-emitter --type 'start' --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
+    ./event-emitter --type 'start' --topic "${SNS_TOPIC_ARN}"
   fi
 
   io::info "Updating DNS record..."
@@ -166,13 +166,13 @@ function main() {
 
   if [[ -n "${WATCH_TCP}" ]]; then
     io::info "Starting TCP Port Watcher..."
-    ./watcher-tcp "${WATCH_TCP}" "${WATCH_IDLE}" ./event-emitter --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
+    ./watcher-tcp "${WATCH_TCP}" "${WATCH_IDLE}" ./event-emitter --topic "${SNS_TOPIC_ARN}"
   fi
 
   io::info "Stopping task..."
   ./task-reaper
 
-  if [[ -n "${SNS_TOPIC}" ]]; then
+  if [[ -n "${SNS_TOPIC_ARN}" ]]; then
     io::info "Emitting stop event..."
     ./event-emitter --type 'stop' --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
   fi
