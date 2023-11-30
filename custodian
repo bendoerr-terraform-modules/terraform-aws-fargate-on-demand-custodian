@@ -156,13 +156,13 @@ function main() {
     esac
   done
 
+  io::info "Updating DNS record..."
+  ./dns-updater --dns-zone-id "${DNS_ZONE_ID}" --dns-record "${DNS_RECORD}"
+
   if [[ -n "${SNS_TOPIC_ARN}" ]]; then
     io::info "Emitting start event..."
     ./event-emitter --type 'start' --topic "${SNS_TOPIC_ARN}"
   fi
-
-  io::info "Updating DNS record..."
-  ./dns-updater --dns-zone-id "${DNS_ZONE_ID}" --dns-record "${DNS_RECORD}"
 
   if [[ -n "${WATCH_TCP}" ]]; then
     io::info "Starting TCP Port Watcher..."
