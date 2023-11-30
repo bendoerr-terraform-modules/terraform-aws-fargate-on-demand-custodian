@@ -166,7 +166,10 @@ function main() {
 
   if [[ -n "${WATCH_TCP}" ]]; then
     io::info "Starting TCP Port Watcher..."
-    ./watcher-tcp "${WATCH_TCP}" "${WATCH_IDLE}" ./event-emitter --topic "${SNS_TOPIC_ARN}"
+    ./watcher-tcp \
+      --port "${WATCH_TCP}" \
+      --events-topic "${SNS_TOPIC_ARN}" \
+      --timeout "${WATCH_IDLE}"
   fi
 
   io::info "Stopping task..."
@@ -174,7 +177,7 @@ function main() {
 
   if [[ -n "${SNS_TOPIC_ARN}" ]]; then
     io::info "Emitting stop event..."
-    ./event-emitter --type 'stop' --SNS_TOPIC_ARN "${SNS_TOPIC_ARN}"
+    ./event-emitter --type 'stop' --topic "${SNS_TOPIC_ARN}"
   fi
 
   # Prevent double "stop" in trap function

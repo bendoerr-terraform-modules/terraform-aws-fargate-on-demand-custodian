@@ -77,7 +77,7 @@ func monitorUnconn() (<-chan interface{}, error) {
 func countEstab() (int, error) {
 	// ss needs a fake tty so wrap it in script
 	cmd := exec.Command("script", "--quiet", "--flush", "--return", "--command",
-		fmt.Sprintf("/sbin/ss --no-header --numeric --oneline sport = %s", port))
+		fmt.Sprintf("ss --no-header --numeric --oneline sport = %s", port))
 
 	// Run the command
 	output, err := cmd.CombinedOutput()
