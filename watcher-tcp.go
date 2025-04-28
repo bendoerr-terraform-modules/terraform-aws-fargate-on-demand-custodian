@@ -5,12 +5,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
+
+	//nolint:depguard // TODO: Replace with log/slog
 	"log"
 	"os/exec"
 	"strings"
 	"time"
 )
 
+//nolint:gochecknoglobals // Configuration variables
 var (
 	port             string
 	timeout          int64
@@ -21,6 +24,7 @@ var (
 	eventEmitTimeout int64
 )
 
+//nolint:gochecknoinits // Used for configuration initialization
 func init() {
 	flag.StringVar(&port, "port", "443", "The TCP port to watch")
 	flag.Int64Var(&timeout, "timeout", 300, "The timeout when watching")
@@ -35,6 +39,7 @@ func monitorUnconn() (<-chan interface{}, error) {
 	notify := make(chan interface{})
 
 	// ss needs a fake tty so wrap it in script
+	//nolint:gosec // G204: Command runs with trusted input from configuration
 	cmd := exec.Command("script", "--quiet", "--flush", "--return", "--command",
 		fmt.Sprintf("ss --no-header --numeric --oneline --events sport = %s", port))
 
@@ -76,6 +81,7 @@ func monitorUnconn() (<-chan interface{}, error) {
 
 func countEstab() (int, error) {
 	// ss needs a fake tty so wrap it in script
+	//nolint:gosec // G204: Command runs with trusted input from configuration
 	cmd := exec.Command("script", "--quiet", "--flush", "--return", "--command",
 		fmt.Sprintf("ss --no-header --numeric --oneline sport = %s", port))
 
@@ -125,6 +131,7 @@ func emitEvent(eventType string) {
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		// Propagate the 'event-emitter' output without decoration
+		//nolint:forbidigo // This is not logging
 		fmt.Println(scanner.Text())
 	}
 
@@ -156,6 +163,7 @@ func monitor() {
 		case <-timer.C:
 			log.Printf("INFO main: timeout, active=%t\n", active)
 
+			//nolint:govet // Intentional shadowing of err variable
 			count, err := countEstab()
 			if err != nil {
 				log.Fatalf("ERROR main: countEstab(): %s\n", err)
