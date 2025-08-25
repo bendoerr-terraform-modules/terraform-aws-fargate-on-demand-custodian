@@ -13,7 +13,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: shellcheck
         uses: reviewdog/action-shellcheck@v1
         with:
@@ -32,7 +32,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: shfmt
         uses: reviewdog/action-shfmt@v1
         with:
@@ -45,7 +45,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: golangci-lint
         uses: reviewdog/action-golangci-lint@v2
         with:
@@ -58,7 +58,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: create package.json
         run: |
           echo -e '{"devDependencies": {"prettier": "^3.1.0"}}' > package.json
@@ -74,7 +74,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: misspell
         uses: reviewdog/action-misspell@v1
         with:
@@ -90,7 +90,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: alex
         uses: reviewdog/action-alex@v1
         with:
@@ -105,7 +105,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: markdownlint
         uses: reviewdog/action-markdownlint@v0
         with:
@@ -120,7 +120,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: hadolint
         uses: reviewdog/action-hadolint@v1
         with:
@@ -133,7 +133,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: actionlint
         uses: reviewdog/action-actionlint@v1
         with:
