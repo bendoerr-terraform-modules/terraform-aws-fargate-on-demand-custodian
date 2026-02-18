@@ -16,11 +16,11 @@ WORKDIR /
 
 RUN apk update && \
     apk add --no-cache \
-      jq=~1.7 \
-      curl=~8.12 \
-      cmd:script=~2.40 \
-      cmd:ss=~6.11 \
-      aws-cli=~2.22
+      jq=~1 \
+      curl=~8 \
+      cmd:script=~2 \
+      cmd:ss=~6 \
+      aws-cli=~2
 
 COPY ./custodian \
      ./dns-updater \
