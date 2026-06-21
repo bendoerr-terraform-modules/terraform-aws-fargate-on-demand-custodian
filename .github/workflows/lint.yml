@@ -19,7 +19,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: error
           filter_mode: file
           shellcheck_flags: --enable=all
           pattern: |
@@ -51,7 +51,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: error
           filter_mode: file
   prettier:
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: error
           filter_mode: file
   misspell:
     runs-on: ubuntu-latest
@@ -80,7 +80,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: none
           filter_mode: file
           exclude: |
             ./.git/*
@@ -96,7 +96,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: none
           filter_mode: file
           alex_flags: |
             * .github/* .github/workflows/*
@@ -111,7 +111,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: none
           filter_mode: file
           markdownlint_flags: |
             --disable MD033 -- .
@@ -126,7 +126,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: error
           filter_mode: file
   actionlint:
     runs-on: ubuntu-latest
@@ -139,5 +139,5 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
-          fail_on_error: "false"
+          fail_level: error
           filter_mode: file
