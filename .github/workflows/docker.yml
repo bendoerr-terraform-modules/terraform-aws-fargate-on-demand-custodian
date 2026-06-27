@@ -9,6 +9,9 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -17,17 +20,22 @@ jobs:
       contents: read
 
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+        uses: step-security/setup-qemu-action@fe44c529aab16157fc475f4991a7f926aa9a02a2 # v4.1.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: step-security/setup-buildx-action@6997872a55d77391e51b87609556578131f44402 # v4.1.0
 
       - name: Login to GitHub Container Repository
-        uses: docker/login-action@v4
+        uses: step-security/docker-login-action@164e21d7e52229904128e2f946001cb88278c33d # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -35,7 +43,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v6
+        uses: step-security/metadata-action@619b5adf759ed62ddd8c6d474364da38ea264eee # v6.1.0
         with:
           # list of Docker images to use as base name for tags
           images: |
@@ -49,7 +57,7 @@ jobs:
             type=semver,pattern={{major}}
 
       - name: Build and push
-        uses: docker/build-push-action@v7
+        uses: step-security/docker-build-push-action@9af9b5acc1751dcec2aa5375a068979fa526bc9a # v7.2.0
         with:
           push: true
           provenance: false
