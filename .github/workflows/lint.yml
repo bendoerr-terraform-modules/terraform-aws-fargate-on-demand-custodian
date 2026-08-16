@@ -148,7 +148,7 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: markdownlint
-        uses: step-security/action-markdownlint@7eff996c965b6b4a8575f7971d970fc40479c321 # v0.26.9
+        uses: step-security/action-markdownlint@3334baf7cc71c6d7fd284d955e1bf54a2b2ee31a # v0.28.0
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
@@ -168,7 +168,7 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: hadolint
-        uses: reviewdog/action-hadolint@1b2cfa6ba72072ad35158d7ff3aa49bbdc03506d # v1.51.0
+        uses: reviewdog/action-hadolint@2d0eb7c86a0ddd94eb625485f4cc2730e105edd8 # v1.53.0
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
