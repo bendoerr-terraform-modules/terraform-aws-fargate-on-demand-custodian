@@ -17,7 +17,7 @@ jobs:
       packages: write
     steps:
       - name: Delete PR Image
-        uses: bots-house/ghcr-delete-image-action@v1.1.0
+        uses: bots-house/ghcr-delete-image-action@3827559c68cb4dcdf54d813ea9853be6d468d3a4 # v1.1.0
         if: github.event_name == 'pull_request'
         with:
           owner: bendoerr-terraform-modules
@@ -25,22 +25,10 @@ jobs:
           token: ${{ github.token }}
           tag: pr-${{github.event.pull_request.number}}
       - name: Delete Untagged Images
-        uses: bots-house/ghcr-delete-image-action@v1.1.0
+        uses: bots-house/ghcr-delete-image-action@3827559c68cb4dcdf54d813ea9853be6d468d3a4 # v1.1.0
         if: github.event_name != 'pull_request'
         with:
           owner: bendoerr-terraform-modules
           name: terraform-aws-fargate-on-demand-custodian
           token: ${{ github.token }}
           untagged-keep-latest: 1
-      - name: Delete old sha-ref Images
-        #uses: snok/container-retention-policy@v2
-        uses: injabie3-moe/container-retention-policy@use-github-token
-        if: github.event_name == 'workflow_dispatch'
-        with:
-          account-type: org
-          org-name: bendoerr-terraform-modules
-          image-names: terraform-aws-fargate-on-demand-custodian
-          token: ${{ github.token }}
-          token-type: github-token
-          filter-tags: sha-*
-          cut-off: 1 minute ago UTC
